@@ -103,7 +103,7 @@
         /* Oyun Tuvali */
         canvas {
             display: block;
-            background: linear-gradient(to bottom, #1e1b4b, #311042);
+            background: linear-gradient(to bottom, #120f2e, #281036);
             cursor: pointer;
         }
 
@@ -180,12 +180,12 @@
     let score = 0;
     let highScore = localStorage.getItem('flappyHighScore') || 0;
 
-    // Kedi Nesnesi (Kanatlı Uçan Kedi)
+    // Kedi Nesnesi (Tam ortadan başlar: x: 160, y: 280)
     let cat = {
-        x: 80,
-        y: 250,
-        width: 40,
-        height: 30,
+        x: 150,
+        y: 280,
+        width: 50,
+        height: 36,
         gravity: 0.35,
         lift: -6.5,
         velocity: 0
@@ -193,12 +193,11 @@
 
     // Borular
     let pipes = [];
-    let pipeWidth = 60;
+    let pipeWidth = 65;
     let pipeGap = 160;
     let pipeSpeed = 2.5;
     let frameCount = 0;
 
-    // Sayfa Açılış Giriş Yazısı
     window.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => {
             showScreen('menuScreen');
@@ -219,25 +218,20 @@
         showScreen('gameScreen');
         gameState = 'PLAYING';
         score = 0;
-        cat.y = 250;
+        cat.x = 100; // Oyun başladığında kedi solda/ortada ideal bir uçuş pozisyonuna yerleşir
+        cat.y = 280; // Tam orta yükseklik
         cat.velocity = 0;
         pipes = [];
         frameCount = 0;
 
-        // Müziği başlat
         bgMusic.play().catch(e => console.log("Müzik çalma hatası:", e));
         
         loop();
     }
 
-    // Ekran veya Tuş Kontrolü
     window.addEventListener('keydown', (e) => {
-        if (e.code === 'Space') {
-            if (gameState === 'PLAYING') {
-                cat.velocity = cat.lift;
-            } else if (gameState === 'MENU' && document.getElementById('gameScreen').classList.contains('active') === false) {
-                // Menüde boşluk basılırsa oyunu başlatma opsiyonu
-            }
+        if (e.code === 'Space' && gameState === 'PLAYING') {
+            cat.velocity = cat.lift;
         }
     });
 
@@ -252,21 +246,18 @@
     function loop() {
         if (gameState !== 'PLAYING') return;
 
-        // Fizik ve Güncellemeler
         cat.velocity += cat.gravity;
         cat.y += cat.velocity;
 
-        // Zemin ve Tavan Kontrolü
         if (cat.y + cat.height >= canvas.height || cat.y <= 0) {
             endGame();
             return;
         }
 
-        // Boru Üretimi
         frameCount++;
         if (frameCount % 100 === 0) {
-            let minHeight = 50;
-            let maxHeight = canvas.height - pipeGap - 50;
+            let minHeight = 60;
+            let maxHeight = canvas.height - pipeGap - 60;
             let randomHeight = Math.floor(Math.random() * (maxHeight - minHeight + 1)) + minHeight;
 
             pipes.push({
@@ -277,33 +268,29 @@
             });
         }
 
-        // Boruları Hareket Ettirme ve Çarpışma
         for (let i = pipes.length - 1; i >= 0; i--) {
             pipes[i].x -= pipeSpeed;
 
-            // Puan Artırma
             if (!pipes[i].passed && pipes[i].x + pipeWidth < cat.x) {
                 score++;
                 pipes[i].passed = true;
             }
 
-            // Çarpışma Tespiti (Kutu Çarpışması)
+            // Çarpışma alanı (Hassas kutu kontrolü)
             if (
-                cat.x < pipes[i].x + pipeWidth &&
-                cat.x + cat.width > pipes[i].x &&
-                (cat.y < pipes[i].top || cat.y + cat.height > canvas.height - pipes[i].bottom)
+                cat.x + 5 < pipes[i].x + pipeWidth &&
+                cat.x + cat.width - 5 > pipes[i].x &&
+                (cat.y + 5 < pipes[i].top || cat.y + cat.height - 5 > canvas.height - pipes[i].bottom)
             ) {
                 endGame();
                 return;
             }
 
-            // Ekrandan Çıkan Boruları Temizle
             if (pipes[i].x + pipeWidth < 0) {
                 pipes.splice(i, 1);
             }
         }
 
-        // Çizim İşlemleri
         draw();
         requestAnimationFrame(loop);
     }
@@ -311,44 +298,105 @@
     function draw() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        // Boruları Çiz
-        ctx.fillStyle = '#a855f7';
+        // Şık Beton / Neon Borular
+        ctx.fillStyle = '#9333ea';
         for (let pipe of pipes) {
             ctx.fillRect(pipe.x, 0, pipeWidth, pipe.top);
             ctx.fillRect(pipe.x, canvas.height - pipe.bottom, pipeWidth, pipe.bottom);
         }
 
-        // Kanatlı Uçan Kedi Çizimi (Estetik Karakter)
+        // --- GERÇEKÇİ VE DETAYLI KANATLI KEDİ ÇİZİMİ ---
         ctx.save();
         ctx.translate(cat.x + cat.width / 2, cat.y + cat.height / 2);
         
-        // Kedi Gövdesi
+        // Hafif eğim efekti (Uçarken aşağı/yukarı bakma)
+        let rotation = Math.min(Math.PI / 4, Math.max(-Math.PI / 4, cat.velocity * 0.08));
+        ctx.rotate(rotation);
+
+        // Kabarık Kuyruk
+        ctx.strokeStyle = '#f97316';
+        ctx.lineWidth = 5;
+        ctx.beginPath();
+        ctx.moveTo(-22, 5);
+        ctx.quadraticCurveTo(-35, -5, -30, -15);
+        ctx.stroke();
+
+        // Kedi Gövdesi (Gradyan / Gerçekçi Kürk Efekti)
+        ctx.fillStyle = '#ea580c';
+        ctx.beginPath();
+        ctx.ellipse(0, 4, 22, 15, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Göğüs Kısmı (Açık Ton)
+        ctx.fillStyle = '#fed7aa';
+        ctx.beginPath();
+        ctx.ellipse(6, 6, 12, 10, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Kedi Kafası
         ctx.fillStyle = '#f97316';
         ctx.beginPath();
-        ctx.roundRect(-20, -15, 36, 24, 10);
+        ctx.arc(12, -4, 14, 0, Math.PI * 2);
         ctx.fill();
 
-        // Kedi Kulakları
+        // Üçgen Kulaklar
         ctx.beginPath();
-        ctx.moveTo(-15, -15);
-        ctx.lineTo(-20, -28);
-        ctx.lineTo(-8, -15);
-        ctx.moveTo(8, -15);
-        ctx.lineTo(14, -28);
-        ctx.lineTo(16, -15);
+        ctx.moveTo(3, -13);
+        ctx.lineTo(8, -24);
+        ctx.lineTo(15, -14);
         ctx.fill();
 
-        // Kanatlar (Uçma efekti için)
+        ctx.beginPath();
+        ctx.moveTo(14, -13);
+        ctx.lineTo(21, -22);
+        ctx.lineTo(23, -12);
+        ctx.fill();
+
+        // Kulak İçi Pembelik
+        ctx.fillStyle = '#fbcfe8';
+        ctx.beginPath();
+        ctx.moveTo(6, -14);
+        ctx.lineTo(9, -20);
+        ctx.lineTo(12, -14);
+        ctx.fill();
+
+        // Gözler (Sevimli Kedi Gözü)
+        ctx.fillStyle = '#0f172a';
+        ctx.beginPath();
+        ctx.arc(16, -6, 2, 0, Math.PI * 2);
+        ctx.arc(11, -6, 2, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Minik Burun ve Bıyıklar
+        ctx.fillStyle = '#fda4af';
+        ctx.beginPath();
+        ctx.arc(14, -2, 1.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(16, -1); ctx.lineTo(24, -2);
+        ctx.moveTo(16, 1); ctx.lineTo(23, 3);
+        ctx.stroke();
+
+        // Kanatlar (Animasyonlu Uçma Kanatları)
+        let wingFlap = Math.sin(Date.now() / 60) * 0.7;
+        ctx.save();
+        ctx.translate(-4, -6);
+        ctx.rotate(wingFlap);
         ctx.fillStyle = '#38bdf8';
         ctx.beginPath();
-        ctx.ellipse(-2, -2, 12, 6, Math.sin(Date.now() / 80) * 0.5, 0, Math.PI * 2);
+        ctx.ellipse(0, -6, 14, 6, -0.5, 0, Math.PI * 2);
         ctx.fill();
+        ctx.restore();
 
         ctx.restore();
+        // ---------------------------------------------
 
         // Skor Tablosu
         ctx.fillStyle = 'white';
-        ctx.font = 'bold 24px Fredoka';
+        ctx.font = 'bold 26px Fredoka';
         ctx.textAlign = 'center';
         ctx.fillText(score, canvas.width / 2, 50);
     }
@@ -360,8 +408,7 @@
             localStorage.setItem('flappyHighScore', highScore);
         }
 
-        // Oyun bitti ekranı katmanı
-        ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
         ctx.fillStyle = 'white';
@@ -377,5 +424,5 @@
 </script>
 
 </body>
-  </html>
-  
+    </html>
+    
